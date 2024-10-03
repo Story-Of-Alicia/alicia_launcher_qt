@@ -150,8 +150,9 @@ QPushButton#btn_login:disabled {
    </property>
    <property name="font">
     <font>
-     <family>EurostileBla</family>
+     <family>NotEurostile</family>
      <pointsize>12</pointsize>
+     <bold>true</bold>
      <hintingpreference>PreferNoHinting</hintingpreference>
     </font>
    </property>
@@ -202,11 +203,14 @@ QPushButton#btn_login:disabled {
    </property>
    <property name="font">
     <font>
-     <family>Eurostile</family>
+     <family>NotEurostile</family>
      <pointsize>12</pointsize>
      <hintingpreference>PreferNoHinting</hintingpreference>
      <fontweight>Black</fontweight>
     </font>
+   </property>
+   <property name="text">
+    <string/>
    </property>
    <property name="echoMode">
     <enum>QLineEdit::EchoMode::Password</enum>
