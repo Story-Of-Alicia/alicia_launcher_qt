@@ -110,6 +110,11 @@ Window::Window(QWidget* parent)
 
   // to be able to stop the animation cleanly at frame 0
   connect(_gameStartMovie, SIGNAL(frameChanged(int)), this, SLOT(handle_frame_changed(int)));
+
+
+  QSettings GameVersionEnv(":config.ini", QSettings::IniFormat);
+  QString gameVersion = GameVersionEnv.value("Version/GameVersion", "0.0.0").toString();
+  _masterFrameUI.l_version->setText(gameVersion);
 }
 
 void Window::mousePressEvent(QMouseEvent* event)

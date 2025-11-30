@@ -15,6 +15,7 @@ struct Profile
   std::string_view username;
   std::string_view character_name;
   std::string_view guild;
+  std::string_view token;
 
   uint64_t level;
   uint64_t last_login;
