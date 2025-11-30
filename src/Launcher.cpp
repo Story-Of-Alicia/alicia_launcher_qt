@@ -9,10 +9,15 @@
 #include <sstream>
 
 #include <QString>
+#include <QNetworkAccessManager>
+#include <QEventLoop>
+#include <QNetworkReply>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSettings>
 
 namespace launcher
 {
-
 std::map<std::string, std::string> obtainFileInfo()
 {
   return {
@@ -81,6 +86,8 @@ Launcher::Launcher()
     .username = "%USERNAME%",
     .character_name = "%CHARACTER%",
     .guild = "%GUILD%",
+    .token = "%TOKEN%",
+
     .level = 69,
     .last_login = 0,
   };
@@ -92,13 +99,74 @@ Launcher::~Launcher()
 
 bool Launcher::authenticate(std::string const& username, std::string const& password) noexcept
 {
-  std::lock_guard lock(_mutex);
-  if(username == "test")
-  {
-    return _isAuthenticated = false;
-  }
+    std::lock_guard lock(_mutex);
 
-  return _isAuthenticated = true;
+    QSettings _settings(":config.ini", QSettings::IniFormat);
+    QString API_URL = _settings.value("Network/LoginAPI").toString();
+
+    qDebug() << API_URL;
+    QUrl url(API_URL);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+
+    QJsonObject json;
+    json["username"] = QString::fromStdString(username);
+    json["password"] = QString::fromStdString(password);
+
+    QNetworkAccessManager manager;
+    QNetworkReply* reply = manager.post(request, QJsonDocument(json).toJson());
+
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    if (reply->error() == QNetworkReply::NoError)
+    {
+      int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+      if (httpStatus == 200)
+      {
+        /*{
+         *
+         *possible JSON Response format
+         *example:
+         *
+            "username": "bart", - string
+            "character_name": "Bart", - string
+            "level": 10 - int
+            "last_login": "01-02-25 20:00:00", - string | datetime
+            "guild": "The Simpsons", - string
+
+            "character_icon | profile_picture": "https://prototype.storyofalicia.com/api/users/1/B453BA521725217.png", example
+            "token": "ey9AG432A5EA62AS46A2E4A6S"
+            }*/
+
+        QByteArray profileRawData = reply->readAll();
+        QJsonDocument profileDataJson = QJsonDocument::fromJson(profileRawData);
+        QJsonObject profileObject = profileDataJson.object();
+
+
+        _profile.username = profileObject.value("username").isNull() ? username : profileObject.value("username").toString().toStdString();
+
+        _profile.character_name = profileObject.value("character_name").isNull() ? "N/A" : profileObject.value("character_name").toString().toStdString();
+
+        _profile.guild = profileObject.value("guild").isNull() ? "No Guil Yet" : profileObject.value("guild").toString().toStdString();
+
+        QJsonValue lastLoginValue = profileObject.value("last_login");
+
+        _profile.last_login = (lastLoginValue.isNull() || !lastLoginValue.isDouble())
+
+                                ? QDateTime::currentDateTime().toSecsSinceEpoch()
+                                : lastLoginValue.toVariant().toULongLong();
+
+        _profile.token = profileObject.value("token").isNull() ? "%TOKEN%" : profileObject.value("token").toString().toStdString();
+
+        QJsonValue levelValue = profileObject.value("level");
+        _profile.level = (levelValue.isUndefined() || levelValue.isNull() || !levelValue.isDouble()) ? 0 : levelValue.toInt();
+
+        _isAuthenticated = true;
+      }
+    }
+  return _isAuthenticated;
 }
 
 void Launcher::logout() noexcept { _isAuthenticated = false; }
